@@ -1,0 +1,2 @@
+1: Create entry page when names are inserted to play
+    1.1: Add option to pick what score to play
