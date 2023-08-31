@@ -1,19 +1,25 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import styled from 'styled-components/macro';
 
 import { GlobalStyle } from './globalStyles';
 import GameConfiguration from './components/GameConfiguration';
 import Scoreboard from './components/Scoreboard';
 
-export type Config = {
+export type GameConfig = {
   gameStarted: boolean;
-  players: Array<string>;
-  scoreOption: number;
+  playersConfig: Array<PlayerConfig>;
+  currentPlayerIndex: number;
+};
+
+export type PlayerConfig = {
+  score: number;
+  player: string;
 };
 
 const Container = styled.div({
   maxWidth: '1000px',
   color: 'white',
+  margin: 'auto',
 });
 
 const MainHeading = styled.h1({
@@ -23,64 +29,77 @@ const MainHeading = styled.h1({
 });
 
 const CONFIG_LOCAL_STORAGE_KEY = 'keep-score-darts-config';
-const INITIAL_CONFIG_STATE = {
-  gameStarted: false,
-  players: [],
-  scoreOption: 301,
-};
+
+function getDataFromStorage(): GameConfig {
+  const storedData = localStorage.getItem(CONFIG_LOCAL_STORAGE_KEY) || '{}';
+
+  return JSON.parse(storedData);
+}
+
+const storedData = getDataFromStorage();
 
 function App() {
-  function getConfig(): Config {
-    const gameData: Config = getDataFromStorage();
+  const [gameStarted, setGameStarted] = useState(
+    storedData.gameStarted || false,
+  );
+  const [playersConfig, setPlayersConfig] = useState<Array<PlayerConfig>>(
+    storedData.playersConfig || [],
+  );
+  const [currentPlayerIndex, setCurrentPlayerIndex] = useState(
+    storedData.currentPlayerIndex || 0,
+  );
 
-    if (Object.keys(gameData).length) {
-      return gameData;
-    } else {
-      return INITIAL_CONFIG_STATE;
-    }
-  }
+  const [scoreOption, setScoreOption] = useState(301);
+  const [players, setPlayers] = useState<Array<string>>([]);
 
-  const [config, setConfig] = useState<Config>(getConfig());
+  useEffect(() => {
+    localStorage.setItem(
+      CONFIG_LOCAL_STORAGE_KEY,
+      JSON.stringify({ gameStarted, playersConfig, currentPlayerIndex }),
+    );
+  }, [gameStarted, playersConfig, currentPlayerIndex]);
 
   function handleStartGame() {
-    const gameConfig: Config = {
-      gameStarted: true,
-      players: config.players,
-      scoreOption: config.scoreOption,
-    };
-
-    setConfig(gameConfig);
-
-    localStorage.setItem(CONFIG_LOCAL_STORAGE_KEY, JSON.stringify(gameConfig));
+    setGameStarted(true);
+    setPlayersConfig(
+      players.map((player) => ({
+        player,
+        score: scoreOption,
+      })),
+    );
   }
 
-  function getDataFromStorage(): Config {
-    const storedData = localStorage.getItem(CONFIG_LOCAL_STORAGE_KEY) || '{}';
-
-    return JSON.parse(storedData);
-  }
-
-  function handleAddPlayer(player: string) {
-    setConfig((prevState) => {
-      return {
-        ...prevState,
-        players: [...prevState.players, player],
-      };
+  function updatePlayersScore(score: number) {
+    setPlayersConfig((config) => {
+      config[currentPlayerIndex].score -= score;
+      return config;
     });
   }
 
+  function handleAddPlayer(player: string) {
+    setPlayers((prevState) => [...prevState, player]);
+  }
+
   function handleSetScoreOption(score: number) {
-    setConfig((prevState) => {
-      return {
-        ...prevState,
-        scoreOption: score,
-      };
+    setScoreOption(score);
+  }
+
+  function nextPlayer() {
+    setCurrentPlayerIndex((prev) => {
+      const amountOfPlayers = playersConfig.length;
+      if (currentPlayerIndex < amountOfPlayers - 1) {
+        return prev + 1;
+      } else {
+        return 0;
+      }
     });
   }
 
   function clearGame() {
-    setConfig(INITIAL_CONFIG_STATE);
-
+    setGameStarted(false);
+    setPlayers([]);
+    setScoreOption(301);
+    setCurrentPlayerIndex(0);
     localStorage.removeItem(CONFIG_LOCAL_STORAGE_KEY);
   }
 
@@ -89,20 +108,23 @@ function App() {
       <GlobalStyle />
 
       <MainHeading>KeepScore Darts 🎯</MainHeading>
-      {config.gameStarted ? (
-        <>
-          <Scoreboard config={config} />
-          <button onClick={clearGame}>Clear game</button>
-        </>
+      {gameStarted ? (
+        <Scoreboard
+          playersConfig={playersConfig}
+          updatePlayersScore={updatePlayersScore}
+          nextPlayer={nextPlayer}
+          currentPlayerIndex={currentPlayerIndex}
+          clearGame={clearGame}
+        />
       ) : (
         <>
           <GameConfiguration
+            players={players}
             onAddPlayer={handleAddPlayer}
-            players={config.players}
             setScoreOption={handleSetScoreOption}
-            scoreOption={config.scoreOption}
+            scoreOption={scoreOption}
           />
-          {config.players.length > 0 && (
+          {players.length > 0 && (
             <button onClick={handleStartGame}>Start</button>
           )}
         </>
