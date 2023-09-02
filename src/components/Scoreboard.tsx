@@ -11,6 +11,10 @@ const SCORE_VALUES = [
   ],
 ];
 
+const POSSIBLE_DARTS = [
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+]; // testing
+
 type ScoreboardProps = {
   playersConfig: Array<PlayerConfig>;
   updatePlayersScore: (score: number) => void;
@@ -135,7 +139,7 @@ function Scoreboard({
   currentPlayerIndex,
   clearGame,
 }: ScoreboardProps) {
-  const [throws, setThrows] = useState(3);
+  const [throws, setThrows] = useState(3); // change this to 0
   const [scores, setScores] = useState<Array<number>>([0, 0, 0]);
   const [playerScorePerRound, setPlayerScorePerRound] = useState(0);
   const [isDouble, setIsDouble] = useState(false);
@@ -185,6 +189,71 @@ function Scoreboard({
       nextPlayer();
     }
   }
+
+  function generateThreeDartDoubleFinishers(remainingScore) {
+    const possibleDarts = [
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+    ].reverse();
+    const doubles = possibleDarts.map((d) => d * 2);
+
+    const finishers = [];
+
+    console.log(doubles);
+
+    function findFinishers(remainingScore, dartsUsed, dartCount) {
+      if (finishers.length === 1) return;
+
+      // console.log(remainingScore);
+
+      if (doubles.includes(remainingScore)) {
+        finishers.push([...dartsUsed, `D${remainingScore / 2}`]);
+        return;
+      }
+
+      // finishers.push(dartsUsed);
+
+      for (const dart of possibleDarts) {
+        if (doubles.includes(remainingScore - dart * 3)) {
+          findFinishers(
+            remainingScore - dart * 3,
+            [...dartsUsed, `T${dart}`],
+            dartCount + 1,
+          );
+        }
+
+        if (doubles.includes(remainingScore - dart * 2)) {
+          findFinishers(
+            remainingScore - dart * 2,
+            [...dartsUsed, `D${dart}`],
+            dartCount + 1,
+          );
+        }
+
+        if (doubles.includes(remainingScore - dart)) {
+          findFinishers(
+            remainingScore - dart,
+            [...dartsUsed, dart],
+            dartCount + 1,
+          );
+        }
+      }
+    }
+
+    for (const dart of possibleDarts) {
+      if (finishers.length > 0) break;
+      if (dart < remainingScore) {
+        findFinishers(remainingScore - dart, [dart], 1);
+      }
+    }
+
+    return finishers;
+  }
+
+  const remainingScore = 170; // Change this to your desired target finish score
+  console.log('REMAINING_SCORE', remainingScore);
+  const dartDoubleFinishers = generateThreeDartDoubleFinishers(remainingScore);
+
+  console.log(dartDoubleFinishers);
 
   return (
     <>
