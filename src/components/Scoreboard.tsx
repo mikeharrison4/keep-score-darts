@@ -190,68 +190,91 @@ function Scoreboard({
     }
   }
 
-  function generateThreeDartDoubleFinishers(remainingScore) {
+  const multipliersWithPrefixes = [
+    { multiplier: 3, prefix: 'T' },
+    { multiplier: 2, prefix: 'D' },
+    { multiplier: 1, prefix: '' },
+  ];
+
+  function isBullseye(dart) {
+    return dart === '50' || dart === 50;
+  }
+
+  function generateThreeDartDoubleFinishers(remainingScore, numOfSuggestions) {
     const possibleDarts = [
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 50,
     ].reverse();
-    const doubles = possibleDarts.map((d) => d * 2);
+    const doubles = possibleDarts
+      .filter((dart) => dart !== 50)
+      .map((d) => d * 2);
 
     const finishers = [];
 
-    console.log(doubles);
+    function findFinishers(
+      remainingScore,
+      dartsUsed,
+      dartCount,
+      nunOfSuggestions,
+    ) {
+      if (
+        remainingScore === 0 &&
+        (dartsUsed[0].startsWith('D') || isBullseye(dartsUsed[0]))
+      ) {
+        finishers.push([...dartsUsed]);
+        return;
+      }
 
-    function findFinishers(remainingScore, dartsUsed, dartCount) {
-      if (finishers.length === 1) return;
-
-      // console.log(remainingScore);
+      if (isBullseye(remainingScore)) {
+        finishers.push([...dartsUsed, `${remainingScore}`]);
+        return;
+      }
 
       if (doubles.includes(remainingScore)) {
         finishers.push([...dartsUsed, `D${remainingScore / 2}`]);
         return;
       }
 
-      // finishers.push(dartsUsed);
-
       for (const dart of possibleDarts) {
-        if (doubles.includes(remainingScore - dart * 3)) {
-          findFinishers(
-            remainingScore - dart * 3,
-            [...dartsUsed, `T${dart}`],
-            dartCount + 1,
-          );
-        }
+        multipliersWithPrefixes.forEach(({ multiplier, prefix }) => {
+          if ([2, 3].includes(multiplier) && isBullseye(dart)) return;
 
-        if (doubles.includes(remainingScore - dart * 2)) {
-          findFinishers(
-            remainingScore - dart * 2,
-            [...dartsUsed, `D${dart}`],
-            dartCount + 1,
-          );
-        }
-
-        if (doubles.includes(remainingScore - dart)) {
-          findFinishers(
-            remainingScore - dart,
-            [...dartsUsed, dart],
-            dartCount + 1,
-          );
-        }
+          if (
+            doubles.includes(remainingScore - dart * multiplier) ||
+            remainingScore - dart * multiplier === 50
+          ) {
+            findFinishers(
+              remainingScore - dart * multiplier,
+              [...dartsUsed, `${prefix}${dart}`],
+              dartCount + 1,
+              nunOfSuggestions,
+            );
+          }
+        });
       }
     }
 
     for (const dart of possibleDarts) {
-      if (finishers.length > 0) break;
-      if (dart < remainingScore) {
-        findFinishers(remainingScore - dart, [dart], 1);
-      }
+      multipliersWithPrefixes.forEach(({ multiplier, prefix }) => {
+        if ([2, 3].includes(multiplier) && isBullseye(dart)) return;
+
+        findFinishers(
+          remainingScore - dart * multiplier,
+          [`${prefix}${dart}`],
+          1,
+          numOfSuggestions,
+        );
+      });
     }
 
     return finishers;
   }
 
-  const remainingScore = 170; // Change this to your desired target finish score
+  const remainingScore = 80; // Change this to your desired target finish score
   console.log('REMAINING_SCORE', remainingScore);
-  const dartDoubleFinishers = generateThreeDartDoubleFinishers(remainingScore);
+  const dartDoubleFinishers = generateThreeDartDoubleFinishers(
+    remainingScore,
+    11,
+  );
 
   console.log(dartDoubleFinishers);
 
