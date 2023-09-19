@@ -3,6 +3,7 @@ import styled from 'styled-components/macro';
 
 import type { PlayerConfig } from '../App';
 import ContinueGameModal from './ContinueGameModal';
+import { generateFinishers } from '../generateFinishers';
 
 const SCORE_VALUES = [
   [
@@ -145,6 +146,13 @@ function Scoreboard({
   const [isDouble, setIsDouble] = useState(false);
   const [isTriple, setIsTriple] = useState(false);
 
+  function nextPlayerHandler() {
+    setThrows(3);
+    setScores([0, 0, 0]);
+    setPlayerScorePerRound(0);
+    nextPlayer();
+  }
+
   function handleUndo() {
     const currentPlayerScore = playersConfig[currentPlayerIndex].score;
     const scoreIndex = 3 - throws - 1;
@@ -167,6 +175,7 @@ function Scoreboard({
       setIsDouble(false);
       updatedScore = updatedScore * 2;
     }
+
     if (isTriple) {
       setIsTriple(false);
       updatedScore = updatedScore * 3;
@@ -183,100 +192,16 @@ function Scoreboard({
     updatePlayersScore(updatedScore);
 
     if (throws - 1 === 0) {
-      setThrows(3);
-      setScores([0, 0, 0]);
-      setPlayerScorePerRound(0);
-      nextPlayer();
+      nextPlayerHandler();
     }
   }
 
-  const multipliersWithPrefixes = [
-    { multiplier: 3, prefix: 'T' },
-    { multiplier: 2, prefix: 'D' },
-    { multiplier: 1, prefix: '' },
-  ];
-
-  function isBullseye(dart) {
-    return dart === '50' || dart === 50;
-  }
-
-  function generateThreeDartDoubleFinishers(remainingScore, numOfSuggestions) {
-    const possibleDarts = [
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 50,
-    ].reverse();
-    const doubles = possibleDarts
-      .filter((dart) => dart !== 50)
-      .map((d) => d * 2);
-
-    const finishers = [];
-
-    function findFinishers(
-      remainingScore,
-      dartsUsed,
-      dartCount,
-      nunOfSuggestions,
-    ) {
-      if (
-        remainingScore === 0 &&
-        (dartsUsed[0].startsWith('D') || isBullseye(dartsUsed[0]))
-      ) {
-        finishers.push([...dartsUsed]);
-        return;
-      }
-
-      if (isBullseye(remainingScore)) {
-        finishers.push([...dartsUsed, `${remainingScore}`]);
-        return;
-      }
-
-      if (doubles.includes(remainingScore)) {
-        finishers.push([...dartsUsed, `D${remainingScore / 2}`]);
-        return;
-      }
-
-      for (const dart of possibleDarts) {
-        multipliersWithPrefixes.forEach(({ multiplier, prefix }) => {
-          if ([2, 3].includes(multiplier) && isBullseye(dart)) return;
-
-          if (
-            doubles.includes(remainingScore - dart * multiplier) ||
-            remainingScore - dart * multiplier === 50
-          ) {
-            findFinishers(
-              remainingScore - dart * multiplier,
-              [...dartsUsed, `${prefix}${dart}`],
-              dartCount + 1,
-              nunOfSuggestions,
-            );
-          }
-        });
-      }
-    }
-
-    for (const dart of possibleDarts) {
-      multipliersWithPrefixes.forEach(({ multiplier, prefix }) => {
-        if ([2, 3].includes(multiplier) && isBullseye(dart)) return;
-
-        findFinishers(
-          remainingScore - dart * multiplier,
-          [`${prefix}${dart}`],
-          1,
-          numOfSuggestions,
-        );
-      });
-    }
-
-    return finishers;
-  }
-
-  const remainingScore = 80; // Change this to your desired target finish score
-  console.log('REMAINING_SCORE', remainingScore);
-  const dartDoubleFinishers = generateThreeDartDoubleFinishers(
-    remainingScore,
-    11,
-  );
-
-  console.log(dartDoubleFinishers);
+  const finishers: Array<string> | null =
+    playersConfig[currentPlayerIndex].score <= 170
+      ? generateFinishers(playersConfig[currentPlayerIndex].score).sort(
+          (a, b) => a.length - b.length,
+        )[0]
+      : null;
 
   return (
     <>
@@ -311,10 +236,17 @@ function Scoreboard({
             <UndoBtn onClick={handleUndo}>Undo</UndoBtn>
           </BoostScoresAndUndo>
         </ScoreValues>
+        {finishers?.length && (
+          <div>
+            {finishers.map((num, index) => (
+              <div key={index}>{num}</div>
+            ))}
+          </div>
+        )}
         <ScoreInputs>
-          {scores.map((score, index) => {
-            return <Input key={index}>{score === 0 ? '' : score}</Input>;
-          })}
+          {scores.map((score, index) => (
+            <Input key={index}>{score === 0 ? '' : score}</Input>
+          ))}
         </ScoreInputs>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <button onClick={clearGame}>Clear game</button>
